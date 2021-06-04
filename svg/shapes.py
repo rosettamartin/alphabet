@@ -16,6 +16,14 @@ class Shape(ABC):
     def rotate(self, degrees, around_point=None):
         pass
 
+    @abstractmethod
+    def flip_horizontal(self, x=None):
+        pass
+
+    @abstractmethod
+    def flip_vertical(self, y=None):
+        pass
+
     def attach_center(self, x, y):
         """
         Transform this object's `points` such that the center of this
@@ -97,6 +105,42 @@ class Polyline(Shape):
 
         self.center = rotate_point(self.center, around_point, degrees)
 
+    def flip_horizontal(self, x=None):
+        """
+        Flip the shape across the `x` value. If `x` is None, flip across
+        the center of the shape.
+
+        :param x: an x coordinate
+        """
+
+        if x is None:
+            x = self.center[0]
+
+        self.points = [
+            (flip_coordinate(x, x), y)
+            for x, y in self.points]
+
+        center_x, center_y = self.center
+        self.center = (flip_coordinate(center_x, x), center_y)
+
+    def flip_vertical(self, y=None):
+        """
+        Flip the shape across the `y` value. If `y` is None, flip across
+        the center of the shape.
+
+        :param y: a y coordinate
+        """
+
+        if y is None:
+            y = self.center[1]
+
+        self.points = [
+            (x, flip_coordinate(y, y))
+            for x, y in self.points]
+
+        center_x, center_y = self.center
+        self.center = (center_x, flip_coordinate(center_y, y))
+
     def translate(self, x, y):
         """Move this object by `x` and `y`."""
         self.points = [
@@ -150,6 +194,32 @@ class Circle(Shape):
             return
 
         self.center = rotate_point(self.center, around_point, degrees)
+
+    def flip_horizontal(self, x=None):
+        """
+        Flip the shape across the `x` value. If `x` is None, flip across
+        the center of the shape.
+
+        :param x: an x coordinate
+        """
+
+        if x is None:
+            return
+        center_x, center_y = self.center
+        self.center = (flip_coordinate(center_x, x), center_y)
+
+    def flip_vertical(self, y=None):
+        """
+        Flip the shape across the `y` value. If `y` is None, flip across
+        the center of the shape.
+
+        :param y: a y coordinate
+        """
+
+        if y is None:
+            return
+        center_x, center_y = self.center
+        self.center = (center_x, flip_coordinate(center_y, y))
 
     def translate(self, x, y):
         """Move this object by `x` and `y`."""
@@ -278,6 +348,69 @@ class Path(Shape):
 
         self.center = rotate_point(self.center, around_point, degrees)
 
+    def flip_horizontal(self, x=None):
+        """
+        Flip the shape across the `x` value. If `x` is None, flip across
+        the center of the shape.
+
+        :param x: an x coordinate
+        """
+
+        if x is None:
+            x = self.center[0]
+
+        # flip across the x value in all commands
+        new_commands = []
+        for command in self.commands:
+            c = command[0]
+            if c.lower() == 'v':
+                # only has y value, don't alter command
+                new_commands.append(command)
+            else:
+                try:
+                    old_x = command[1]
+                    command[1] = flip_coordinate(old_x, x)
+                    new_commands.append(command)
+                except IndexError:
+                    # no coordinates, don't alter command
+                    new_commands.append(command)
+        self.commands = new_commands
+
+        center_x, center_y = self.center
+        self.center = (flip_coordinate(center_x, x), center_y)
+
+    def flip_vertical(self, y=None):
+        """
+        Flip the shape across the `y` value. If `y` is None, flip across
+        the center of the shape.
+
+        :param y: a y coordinate
+        """
+
+        if y is None:
+            y = self.center[1]
+
+        # flip across the y value in all commands
+        new_commands = []
+        for command in self.commands:
+            c = command[0]
+            if c.lower() == 'v':
+                # only has y value, flip
+                old_y = command[1]
+                command[1] = flip_coordinate(old_y, y)
+            else:
+                try:
+                    old_y = command[2]
+                    command[2] = flip_coordinate(old_y, y)
+                    new_commands.append(command)
+                except IndexError:
+                    # no coordinates, don't alter command
+                    new_commands.append(command)
+        self.commands = new_commands
+
+        center_x, center_y = self.center
+        self.center = (center_x, flip_coordinate(center_y, y))
+
     def translate(self, x, y):
         """Move this object by `x` and `y`."""
         new_commands = []
@@ -352,12 +485,59 @@ class Group(Shape):
 
         self.center = rotate_point(self.center, around_point, degrees)
 
+    def flip_horizontal(self, x=None):
+        """
+        Flip the shape across the `x` value. If `x` is None, flip across
+        the center of the shape.
+
+        :param x: an x coordinate
+        """
+
+        if x is None:
+            x = self.center[0]
+
+        for item in self.items:
+            item.flip_horizontal(x)
+
+        center_x, center_y = self.center
+        self.center = (flip_coordinate(center_x, x), center_y)
+
+    def flip_vertical(self, y=None):
+        """
+        Flip the shape across the `y` value. If `y` is None, flip across
+        the center of the shape.
+
+        :param y: a y coordinate
+        """
+
+        if y is None:
+            y = self.center[1]
+
+        for item in self.items:
+            item.flip_vertical(y)
+
+        center_x, center_y = self.center
+        self.center = (center_x, flip_coordinate(center_y, y))
+
     def translate(self, x, y):
         """Move this object by `x` and `y`."""
         for item in self.items:
             item.translate(x, y)
         center_x, center_y = self.center
         self.center = (center_x + x, center_y + y)
+
+
+def flip_coordinate(coord_a, coord_b):
+    """
+    Flip `coord_a` to the other side of `coord_b`.
+
+    :param coord_a: an int coordinate
+    :param coord_b: an int coordinate
+    :return: the new value of coord_a
+    """
+
+    difference = coord_b - coord_a
+    return coord_a + (2 * difference)
 
 
 def rotate_point(point_a, point_b, degrees):
