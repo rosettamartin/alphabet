@@ -117,8 +117,8 @@ class Polyline(Shape):
             x = self.center[0]
 
         self.points = [
-            (flip_coordinate(x, x), y)
-            for x, y in self.points]
+            (flip_coordinate(old_x, x), old_y)
+            for old_x, old_y in self.points]
 
         center_x, center_y = self.center
         self.center = (flip_coordinate(center_x, x), center_y)
@@ -135,8 +135,8 @@ class Polyline(Shape):
             y = self.center[1]
 
         self.points = [
-            (x, flip_coordinate(y, y))
-            for x, y in self.points]
+            (old_x, flip_coordinate(old_y, y))
+            for old_x, old_y in self.points]
 
         center_x, center_y = self.center
         self.center = (center_x, flip_coordinate(center_y, y))
@@ -175,9 +175,9 @@ class Circle(Shape):
         return ElementTree.Element(
             'circle',
             attrib={
-                'cx': self.center[0],
-                'cy': self.center[1],
-                'r': self.radius,
+                'cx': str(self.center[0]),
+                'cy': str(self.center[1]),
+                'r': str(self.radius),
                 **self.attrib})
 
     def rotate(self, degrees, around_point=None):
@@ -438,14 +438,9 @@ class Path(Shape):
 class Group(Shape):
     def __init__(self, *items):
         """
-        Create a group of shapes. Each item used to create the group
-        must have the following methods:
-            - create_element()
-            - rotate(degrees, around_point)
-            - translate(x, y)
-        Each item must also have the attributes min_x, min_y, max_x,
-        max_y, width and height.
-        :param items: A list of shapes.
+        Create a group of Shapes.
+
+        :param items: A list of Shape Objects.
         """
 
         super().__init__()
