@@ -1,3 +1,4 @@
+import math
 import os
 from xml.etree import ElementTree
 from xml.dom import minidom
@@ -6,15 +7,127 @@ from .shapes import Circle, Group, Path, Polyline
 
 
 class Consonant(Group):
-    def __init__(self, *items):
-        # TODO add more kwargs when necessary
+    def __init__(self, *items, descends=True, end_char=False):
         super().__init__(*items)
+        self.descends = descends
+        self.end_char = end_char
 
 
 class Vowel(Group):
-    def __init__(self, *items):
-        # TODO specify points where letters should be attached
-        super().__init__(*items)
+    def __init__(self, start_point, middle_point, end_point, *items,
+                 flip_onset=False, rotate_onset=0,
+                 flip_coda=False, rotate_coda=0):
+        self.items = None
+        self.start_point = start_point
+        self.middle_point = middle_point
+        self.end_point = end_point
+        self.flip_onset = flip_onset
+        self.rotate_onset = rotate_onset
+        self.flip_coda = flip_coda
+        self.rotate_coda = rotate_coda
+        super().__init__(
+            Polyline(start_point, middle_point, end_point),
+            *items)
+
+    # TODO character.width and character.height
+    def add_consonants(self, onset, coda, character_width, character_height):
+        self.items = (*self.items, *onset, *coda)
+
+        # flip and rotate each shape if necessary
+        for shape in onset:
+            if self.flip_onset:
+                shape.flip_vertical()
+            if self.rotate_onset:
+                shape.rotate(self.rotate_onset)
+        for shape in coda:
+            if shape.end_char:
+                # end_chars are always opposite direction in coda
+                shape.flip_horizontal()
+            if self.flip_coda:
+                shape.flip_vertical()
+            if self.rotate_coda:
+                shape.rotate(self.rotate_coda)
+
+        onset_empty_space = get_distance(
+            self.start_point, self.middle_point)
+        coda_empty_space = get_distance(
+            self.middle_point, self.end_point)
+
+        # subtract the space taken up by characters
+        onset_empty_space -= character_width * len(onset)
+        coda_empty_space -= character_width * len(coda)
+
+        # take away some space if the characters on the other side
+        # will get in the way
+        if onset and onset[-1].descends:
+            if len(coda) == 1 and coda[0].descends:
+                coda_empty_space -= character_height / 2
+        if coda and coda[0].descends:
+            if len(onset) == 1 and onset[0].descends:
+                onset_empty_space -= character_height / 2
+
+        onset_num_spaces = len(onset) + 1
+        coda_num_spaces = len(coda) + 1
+        if onset and onset[0].end_char:
+            onset_num_spaces -= 1
+        if coda and coda[-1].end_char:
+            coda_num_spaces -= 1
+        onset_padding = onset_empty_space / onset_num_spaces
+        coda_padding = coda_empty_space / coda_num_spaces
+
+        point_marker = self.start_point
+        for i, cons in enumerate(onset):
+            if i == 0 and cons.end_char:
+                point_marker = travel_towards(
+                    point_marker, self.middle_point,
+                    character_width / 2)
+            else:
+                point_marker = travel_towards(
+                    point_marker, self.middle_point,
+                    onset_padding + (character_width / 2))
+            cons.attach_center(*point_marker)
+            point_marker = travel_towards(
+                point_marker, self.middle_point,
+                (character_width / 2))
+
+        # add coda consonants in reverse order
+        point_marker = self.end_point
+        for i, cons in enumerate(coda[::-1]):
+            if i == 0 and cons.end_char:
+                point_marker = travel_towards(
+                    point_marker, self.middle_point,
+                    character_width / 2)
+            else:
+                point_marker = travel_towards(
+                    point_marker, self.middle_point,
+                    coda_padding + (character_width / 2))
+            cons.attach_center(*point_marker)
+            point_marker = travel_towards(
+                point_marker, self.middle_point,
+                (character_width / 2))
+
+
+def get_distance(point_a, point_b):
+    xa, ya = point_a
+    xb, yb = point_b
+    horizontal = xa - xb
+    vertical = ya - yb
+    # pythagorean theorem
+    return math.sqrt((horizontal ** 2) + (vertical ** 2))
+
+
+def get_middle_point(point_a, point_b, percentage=0.5):
+    xa, ya = point_a
+    xb, yb = point_b
+    return (
+        xa + ((xb - xa) * percentage),
+        ya + ((yb - ya) * percentage))
+
+
+def travel_towards(point_a, point_b, distance):
+    return get_middle_point(
+        point_a, point_b,
+        percentage=distance/get_distance(point_a, point_b))
 
 
 def pformat(xml_element, indent='\t'):
@@ -22,6 +135,7 @@ def pformat(xml_element, indent='\t'):
         indent=indent)
 
 
+# TODO change; if the same letter is used twice, the same instance will be used
 alphabet = {
     'p': Consonant(
         Polyline((0, 10), (0, 0), (6, 0), (6, 10))),
@@ -34,7 +148,8 @@ alphabet = {
     'v': Consonant(
         Polyline((0, 0), (6, 0), (6, 10), (0, 10))),
     't': Consonant(
-        Polyline((0, 0), (6, 0), center_y=5)),
+        Polyline((0, 0), (6, 0), center_y=5),
+        descends=False),
     'd': Consonant(
         Polyline((0, 10), (6, 10), center_y=5)),
     'n': Consonant(
@@ -48,9 +163,11 @@ alphabet = {
         Polyline((0, 2), (6, 8)),
         Polyline((0, 8), (6, 2))),
     'k': Consonant(
-        Polyline((0, 5), (6, 2), center_y=5)),
+        Polyline((0, 5), (6, 2), center_y=5),
+        end_char=True, descends=False),
     'g': Consonant(
-        Polyline((0, 5), (6, 8), center_y=5)),
+        Polyline((0, 5), (6, 8), center_y=5),
+        end_char=True),
     'x': Consonant(
         Polyline((5, 0), (0, 5), (5, 10), center_x=3)),
     'gh': Consonant(
@@ -68,38 +185,34 @@ alphabet = {
         Circle(3, 5, 3),
         Polyline((0, 10), (6, 0))),
     'i': Vowel(
-        Polyline((6, 24), (6, 6), (24, 6))),
+        (6, 24), (6, 6), (24, 6),
+        rotate_onset=270),
     'u': Vowel(
-        Polyline((6, 6), (24, 6), (24, 24))),
+        (6, 6), (24, 6), (24, 24),
+        rotate_coda=90),
     'e': Vowel(
-        Polyline((6, 6), (6, 24), (24, 24))),
+        (6, 6), (6, 24), (24, 24),
+        flip_onset=True, rotate_onset=90, flip_coda=True),
     'o': Vowel(
-        Polyline((6, 24), (24, 24), (24, 6))),
+        (6, 24), (24, 24), (24, 6),
+        flip_onset=True, flip_coda=True, rotate_coda=270),
     'a': Vowel(
-        Polyline((6, 24), (6, 6), (24, 6)),
-        Polyline((1, 24), (1, 29), (6, 29)))}
+        (6, 6), (6, 24), (24, 24),
+        Polyline((1, 24), (1, 29), (6, 29), center_x=15, center_y=15),
+        flip_onset=True, rotate_onset=90, flip_coda=True)}
 
 if __name__ == '__main__':
-    # import copy
-
-    i = alphabet['i']
-    # p = alphabet['p']
-    # p2 = copy.copy(p)
-    p = alphabet['nTEST']
-    p2 = alphabet['l']
-
-    p.rotate(90)
-    p.attach_center(0, 9)
-    p2.attach_center(9, 0)
-
-    group = Group(p, i, p2)
-    group.translate(6, 6)
+    syllable = alphabet['a']
+    syllable.add_consonants(
+        [alphabet['k'], alphabet['r']],
+        [alphabet['b'], alphabet['z']],
+        character_width=6, character_height=10)
 
     svg = ElementTree.Element(
         'svg', attrib={
             'viewbox': '0 0 31 31',
             'xmlns': 'http://www.w3.org/2000/svg'})
-    svg.insert(1, group.create_element())
+    svg.insert(1, syllable.create_element())
 
     if not os.path.isdir('tests'):
         os.mkdir('tests')
