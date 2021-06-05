@@ -1,7 +1,4 @@
 import math
-import os
-from xml.etree import ElementTree
-from xml.dom import minidom
 
 from .shapes import Circle, Group, Path, Polyline
 
@@ -29,7 +26,6 @@ class Vowel(Group):
             Polyline(start_point, middle_point, end_point),
             *items)
 
-    # TODO character.width and character.height
     def add_consonants(self, onset, coda, character_width, character_height):
         self.items = (*self.items, *onset, *coda)
 
@@ -130,12 +126,6 @@ def travel_towards(point_a, point_b, distance):
         percentage=distance/get_distance(point_a, point_b))
 
 
-def pformat(xml_element, indent='\t'):
-    return minidom.parseString(ElementTree.tostring(xml_element)).toprettyxml(
-        indent=indent)
-
-
-# TODO change; if the same letter is used twice, the same instance will be used
 alphabet = {
     'p': Consonant(
         Polyline((0, 10), (0, 0), (6, 0), (6, 10))),
@@ -200,21 +190,3 @@ alphabet = {
         (6, 6), (6, 24), (24, 24),
         Polyline((1, 24), (1, 29), (6, 29), center_x=15, center_y=15),
         flip_onset=True, rotate_onset=90, flip_coda=True)}
-
-if __name__ == '__main__':
-    syllable = alphabet['a']
-    syllable.add_consonants(
-        [alphabet['k'], alphabet['r']],
-        [alphabet['b'], alphabet['z']],
-        character_width=6, character_height=10)
-
-    svg = ElementTree.Element(
-        'svg', attrib={
-            'viewbox': '0 0 31 31',
-            'xmlns': 'http://www.w3.org/2000/svg'})
-    svg.insert(1, syllable.create_element())
-
-    if not os.path.isdir('tests'):
-        os.mkdir('tests')
-    with open('tests/test.svg', 'w') as f:
-        f.write(pformat(svg))
