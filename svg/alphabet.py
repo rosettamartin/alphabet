@@ -1,6 +1,6 @@
 import math
 
-from .shapes import Circle, Group, Path, Polyline
+from shapes import Circle, Group, Path, Polyline
 
 
 class Consonant(Group):

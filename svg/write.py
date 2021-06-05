@@ -2,14 +2,14 @@ from copy import deepcopy
 from xml.dom import minidom
 from xml.etree import ElementTree
 
-from .alphabet import alphabet, Vowel
+from alphabet import alphabet, Vowel
 
 
 class SVG(ElementTree.Element):
     def __init__(self, x, y, width, height):
         super().__init__(
             'svg', attrib={
-                'viewbox': f'{x} {y} {width} {height}',
+                'viewBox': f'{x} {y} {width} {height}',
                 'xmlns': 'http://www.w3.org/2000/svg'})
 
     def to_file(self, filename):
