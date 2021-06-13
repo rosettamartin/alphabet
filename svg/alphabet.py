@@ -27,8 +27,6 @@ class Vowel(Group):
             *items)
 
     def add_consonants(self, onset, coda, character_width, character_height):
-        self.items = (*self.items, *onset, *coda)
-
         # flip and rotate each shape if necessary
         for shape in onset:
             if self.flip_onset:
@@ -85,6 +83,13 @@ class Vowel(Group):
             point_marker = travel_towards(
                 point_marker, self.middle_point,
                 (character_width / 2))
+            if i == 0 and cons.end_char:
+                # add a point to the base vowel shape
+                # instead of adding the consonant
+                add_points = cons.items[0].points[:0:-1]
+                self.items[0].points = (*add_points, *self.items[0].points)
+            else:
+                self.items = (*self.items, cons)
 
         # add coda consonants in reverse order
         point_marker = self.end_point
@@ -101,6 +106,13 @@ class Vowel(Group):
             point_marker = travel_towards(
                 point_marker, self.middle_point,
                 (character_width / 2))
+            if i == 0 and cons.end_char:
+                # add a point to the base vowel shape
+                # instead of adding the consonant
+                add_points = cons.items[0].points[1:]
+                self.items[0].points = (*self.items[0].points, *add_points)
+            else:
+                self.items = (*self.items, cons)
 
 
 def get_distance(point_a, point_b):
