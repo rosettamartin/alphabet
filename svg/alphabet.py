@@ -54,10 +54,10 @@ class Vowel(Group):
         # take away some space if the characters on the other side
         # will get in the way
         if onset and onset[-1].descends:
-            if len(coda) == 1 and coda[0].descends:
+            if coda[0].descends:
                 coda_empty_space -= character_height / 2
         if coda and coda[0].descends:
-            if len(onset) == 1 and onset[0].descends:
+            if onset[-1].descends:
                 onset_empty_space -= character_height / 2
 
         onset_num_spaces = len(onset) + 1
