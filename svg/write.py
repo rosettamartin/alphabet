@@ -19,7 +19,7 @@ class SVG(ElementTree.Element):
 
 class Syllable(SVG):
     def __init__(self, string):
-        super().__init__(0, 0, 31, 31)
+        super().__init__(0, 0, 30, 30)
         self.insert(1, transcribe_syllable(string).create_element())
 
 
